@@ -1,110 +1,72 @@
-import React from 'react';
-import { compose } from 'recompose';
-import './App.css';
+import React, { Component } from 'react';
+import axios from 'axios';
 
-const applyUpdateResult = result => prevState => ({
-  hits: [...prevState.hits, ...result.hits],
-  page: result.page,
-  isLoading: false,
+const axiosGitHubGraphQL = axios.create({
+  baseURL: 'https://api.github.com/graphql',
+  headers: {
+    Authorization: `bearer ${process.env.REACT_APP_GITHUB_PERSONAL_ACCESS_TOKEN}`,
+  },
 });
 
-const applySetResult = result => prevState => ({
-  hits: result.hits,
-  page: result.page,
-  isLoading: false,
-});
+const GET_ORGANIZATION = `
+  {
+    organization(login: "the-road-to-learn-react") {
+      name
+      url
+    }
+  }
+`;
 
-const getHackerNewsUrl = (value, page) =>
-  `https://hn.algolia.com/api/v1/search?query=${value}&page=${page}&hitsPerPage=100`;
+const TITLE = 'GraphQL Github Client';
 
-class App extends React.Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      hits: [],
-      page: null,
-      isLoading: false,
-    };
+class App extends Component {
+  state = {
+    path: 'the-road-to-learn-react/the-road-to-learn-react',
+  };
+
+  componentDidMount() {
+    this.onFetchFromGitHub();
   }
 
-  onInitialSearch = e => {
-    e.preventDefault();
-    const { value } = this.input;
-    if (value === '') {
-      return;
-    }
-    this.fetchStories(value, 0);
+  onChange = event => {
+    this.setState({ path: event.target.value });
   };
 
-  onPaginatedSearch = e =>
-    this.fetchStories(this.input.value, this.state.page + 1);
-
-  fetchStories = (value, page) => {
-    this.setState({ isLoading: true });
-    fetch(getHackerNewsUrl(value, page))
-      .then(response => response.json())
-      .then(result => this.onSetResult(result, page));
+  onSubmit = event => {
+    // fetch data
+    event.preventDefault();
   };
-  onSetResult = (result, page) =>
-    page === 0
-      ? this.setState(applySetResult(result))
-      : this.setState(applyUpdateResult(result));
+
+  onFetchFromGitHub = () => {
+    axiosGitHubGraphQL
+      .post('', { query: GET_ORGANIZATION })
+      .then(result => console.log(result));
+  };
 
   render() {
+    const { path } = this.state;
+
     return (
-      <div className='page'>
-        <div className='interactions'>
-          <form type='submit' onSubmit={this.onInitialSearch}>
-            <input type='text' ref={node => (this.input = node)} />
-            <button type='submit'>Search</button>
-          </form>
-        </div>
-        <ListWithLoadingPaginated
-          list={this.state.hits}
-          isLoading={this.state.isLoading}
-          page={this.state.page}
-          onPaginatedSearch={this.onPaginatedSearch}
-        />
+      <div>
+        <h1>{TITLE}</h1>
+        <form onSubmit={this.onSubmit}>
+          <label htmlFor='url'>
+            Show open issues for https://github.com/
+          </label>
+          <input
+            id='url'
+            type='text'
+            onChange={this.onChange}
+            style={{ width: '300px' }}
+            value={path}
+          />
+          <button type='submit'>Search</button>
+        </form>
+        <hr />
+        {/* Here comes the result! */}
       </div>
     );
   }
 }
-
-const List = ({ list }) => (
-  <div className='list'>
-    {list.map(item => (
-      <div className='list-row' key={item.objectID}>
-        <a href={item.url}>{item.title}</a>
-      </div>
-    ))}
-  </div>
-);
-
-const withLoading = Component => props => (
-  <div>
-    <Component {...props} />
-    <div className='interactions'>
-      {props.isLoading && <span>Loading...</span>}
-    </div>
-  </div>
-);
-
-const withPaginated = Component => props => (
-  <div>
-    <Component {...props} />
-    <div className='interactions'>
-      {props.page !== null && !props.isLoading && (
-        <button type='button' onClick={props.onPaginatedSearch}>
-          More
-        </button>
-      )}
-    </div>
-  </div>
-);
-
-const ListWithLoadingPaginated = compose(
-  withPaginated,
-  withLoading,
-)(List);
 
 export default App;
