@@ -20,7 +20,7 @@ const resolveIssuesQuery = (queryResult, cursor) => state => {
   const { data, errors } = queryResult.data;
   if (!cursor) {
     return {
-      organization: data.organization,
+      organization: data.organization ? data.organization : null,
       errors,
     };
   }
